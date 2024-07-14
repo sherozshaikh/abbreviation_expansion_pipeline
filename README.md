@@ -85,6 +85,7 @@ df:pd.DataFrame = pd.DataFrame(data={
   }
 )
 
+# Create an instance of AbbreviationExpansionPipeline
 AbbreviationExpansionPipeline(
     dataframe_object=df,
     product_desc_column='PROD_DESC',
