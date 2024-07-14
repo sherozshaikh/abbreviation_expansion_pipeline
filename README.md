@@ -50,19 +50,19 @@ Explore the capabilities of the Abbreviation Expansion Pipeline to streamline te
 import pandas as pd
 from abbreviation_expansion_pipeline import AbbreviationExpansionPipeline
 
-# Example DataFrame with product descriptions
+# Example DataFrame with product descriptions in "DESC" column
 df:pd.DataFrame = pd.read_csv('product_descriptions.csv')
 
 # Create an instance of AbbreviationExpansionPipeline
 pipeline = AbbreviationExpansionPipeline(
     dataframe_object=df,
-    product_desc_column='description',
+    product_desc_column='DESC',
     ngram=2,
-    output_file_name='Mined_Keyword_Mapping',
-    hugging_face_model_name='bert-base-uncased',
+    output_file_name='MINED_KEYWORD_MAPPING',
+    hugging_face_model_name='google-bert/bert-base-uncased',
     max_text_length=256,
-    cosine_threshold=0.73,
-    min_text_match_threshold=85.0
+    cosine_threshold=0.75,
+    min_text_match_threshold=85.0,
   ).main()
 ```
 
