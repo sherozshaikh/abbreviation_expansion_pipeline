@@ -2,14 +2,6 @@
 
 # Checks for required Python packages and installs them if not already installed.
 
-# pip3 install gc
-# pip3 install collections
-# pip3 install os
-# pip3 install re
-# pip3 install string
-# pip3 install time
-# pip3 install typing
-# pip3 install warnings
 # pip3 install difflib
 # pip3 install fuzzywuzzy
 # pip3 install jellyfish
@@ -26,7 +18,6 @@ from typing import List,Pattern
 import warnings
 warnings.filterwarnings("ignore")
 from collections import Counter
-import os
 import re
 import string
 from difflib import SequenceMatcher as difflib_sequencematcher
@@ -38,6 +29,7 @@ import nltk
 nltk.download(['punkt', 'stopwords'])
 from nltk import word_tokenize
 from nltk.util import ngrams
+import os
 cpu_count = os.cpu_count()
 cpu_count:int = cpu_count if cpu_count else 1
 from pandarallel import pandarallel
@@ -263,7 +255,7 @@ class AbbreviationExpansionPipelinePD():
       for i2 in item_2_list:
         sc1:float = self.get_fuzz_partial_ratio(sent_1=i1,sent_2=i2)
         sc2:float = self.get_jaro_winkler_similarity(sent_1=i1,sent_2=i2)
-        current_score:float = sc1 if sc1 >= sc2 else sc2
+        current_score:float = min(sc1,sc2)
         if best_score >= current_score:
           continue
         else:
