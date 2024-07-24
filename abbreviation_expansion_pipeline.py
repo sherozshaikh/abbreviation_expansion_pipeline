@@ -1,22 +1,34 @@
 # -*- coding: utf-8 -*-
 
-# Checks for required Python packages and installs them if not already installed.
-import subprocess
-import importlib
+# # Checks for required Python packages and installs them if not already installed.
 
-req_packages:list = ['collections','concurrent','gc','nltk','numpy','os','pandarallel','pandas','re','shutil','string','time','transformers','typing','warnings',]
+# import subprocess
+# import importlib
 
-for package_name in req_packages:
-  try:
-    importlib.import_module(package_name)
-  except:
-    try:
-      # !pip install --quiet {package_name}
-      subprocess.check_call(['pip', 'install', '--quiet', package_name])
-    except Exception as e:
-      print(f"Required package {package_name} was not installed!: {str(e)}")
-del importlib
-print("All required packages are installed.")
+# req_packages:list = ['collections','concurrent','gc','nltk','numpy','os','pandarallel','pandas','re','shutil','string','time','transformers','typing','warnings',]
+
+# for package_name in req_packages:
+#   try:
+#     importlib.import_module(package_name)
+#   except:
+#     try:
+#       # !pip install --quiet {package_name}
+#       subprocess.check_call(['pip', 'install', '--quiet', package_name])
+#     except Exception as e:
+#       print(f"Required package {package_name} was not installed!: {str(e)}")
+# del importlib
+# print("All required packages are installed.")
+
+
+# pip3 install difflib
+# pip3 install fuzzywuzzy
+# pip3 install jellyfish
+# pip3 install nltk
+# pip3 install pandas
+# pip3 install numpy
+# pip3 install pandarallel
+
+
 
 # Import installed packages.
 import time
@@ -35,10 +47,12 @@ nltk.download(['punkt', 'stopwords'])
 from nltk import word_tokenize
 from nltk.util import ngrams
 from transformers import AutoTokenizer,AutoModel
-from pandarallel import pandarallel
-pandarallel.initialize(progress_bar=True)
-
 import os
+cpu_count = os.cpu_count()
+cpu_count:int = cpu_count if cpu_count else 1
+from pandarallel import pandarallel
+pandarallel.initialize(progress_bar=True,nb_workers=cpu_count)
+
 import shutil
 
 subprocess.run(['git', 'clone', '--quiet', 'https://github.com/sherozshaikh/text_to_vector_embedding_pipeline.git'])
@@ -223,7 +237,8 @@ class AbbreviationExpansionPipeline():
       for i2 in item_2_list:
         sc1:float = self.text_scoring.get_fuzz_partial_ratio(sent_1=i1,sent_2=i2)
         sc2:float = self.text_scoring.get_jaro_winkler_similarity(sent_1=i1,sent_2=i2)
-        current_score:float = sc1 if sc1 >= sc2 else sc2
+        # current_score:float = sc1 if sc1 >= sc2 else sc2
+        current_score:float = min(sc1,sc2)
         if best_score >= current_score:
           continue
         else:
@@ -374,6 +389,27 @@ class AbbreviationExpansionPipeline():
       else:
         continue
     del c_name
+
+    # Processing - Match Filtering ======
+    working_result_score_df:pd.DataFrame = working_result_score_df[working_result_score_df['high_score_difflib_sequencematcher']>29.99]
+    print('\u2501'*35)
+    print('\u2503','{:^31}'.format(f'After Filter Operation 1: {working_result_score_df.shape[0]}'),'\u2503')
+    print('\u2501'*35)
+
+    working_result_score_df:pd.DataFrame = working_result_score_df[working_result_score_df['high_score_fuzz_token_set_ratio']>29.99]
+    print('\u2501'*35)
+    print('\u2503','{:^31}'.format(f'After Filter Operation 2: {working_result_score_df.shape[0]}'),'\u2503')
+    print('\u2501'*35)
+
+    working_result_score_df:pd.DataFrame = working_result_score_df[working_result_score_df['high_score_jaro_similarity']>29.99]
+    print('\u2501'*35)
+    print('\u2503','{:^31}'.format(f'After Filter Operation 3: {working_result_score_df.shape[0]}'),'\u2503')
+    print('\u2501'*35)
+
+    working_result_score_df:pd.DataFrame = working_result_score_df[working_result_score_df['high_score_fuzz_partial_ratio']>29.99]
+    print('\u2501'*35)
+    print('\u2503','{:^31}'.format(f'After Filter Operation 4: {working_result_score_df.shape[0]}'),'\u2503')
+    print('\u2501'*35)
 
     working_result_score_df:pd.DataFrame = working_result_score_df.sort_values(by=['high_score_difflib_sequencematcher','high_score_fuzz_token_set_ratio','high_score_jaro_similarity','high_score_fuzz_partial_ratio',],ascending=[False,False,False,False])
 
