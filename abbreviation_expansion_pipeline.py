@@ -425,54 +425,79 @@ class AbbreviationExpansionPipeline():
 
     working_result_score_df:pd.DataFrame = working_result_score_df[working_result_score_df['replacement_flag']==True]
     working_result_score_df:pd.DataFrame = working_result_score_df[['doc1_elements','doc2_elements','Score','SUGGESTED_MAPPING']]
-    working_result_score_df.columns = ['PROD_DESC1','PROD_DESC1','SIMILARITY_SCORE','SUGGESTED_MAPPING']
+    working_result_score_df.columns = ['PROD_DESC1','PROD_DESC2','SIMILARITY_SCORE','SUGGESTED_MAPPING']
     working_result_score_df['SIMILARITY_SCORE']:pd.Series = working_result_score_df['SIMILARITY_SCORE'].astype(float).round(0)
     working_result_score_df['SIMILARITY_SCORE']:pd.Series = working_result_score_df['SIMILARITY_SCORE'].astype(int)
 
+    suggested_map_df:pd.DataFrame = working_result_df['SUGGESTED_MAPPING'].value_counts().reset_index(name='REPLACEMENT_COUNT')
+    suggested_map_df['map']:pd.Series = suggested_map_df['SUGGESTED_MAPPING'].apply(lambda x: [str(k)+'!'+str(v) for k,v in ast.literal_eval(node_or_string=str(x)).items()])
+    suggested_map_df:pd.DataFrame = suggested_map_df.explode(column='map')
+    suggested_map_df[['TO_REPLACE','REPALCE_WITH']]:pd.DataFrame = suggested_map_df['map'].str.split(pat='!',expand=True,regex=False)
+    suggested_map_df:pd.DataFrame = suggested_map_df[['SUGGESTED_MAPPING','REPLACEMENT_COUNT','TO_REPLACE','REPALCE_WITH']]
+
+    working_result_df['LEN1']:pd.Series = working_result_df['PROD_DESC1'].str.len()
+    working_result_df['LEN2']:pd.Series = working_result_df['PROD_DESC2'].str.len()
+    working_result_df:pd.DataFrame = working_result_df.sort_values(by=['SUGGESTED_MAPPING','LEN2','LEN1'],ascending=[True,False,False]).groupby(by=['SUGGESTED_MAPPING']).head(1)[['PROD_DESC1','PROD_DESC2','SUGGESTED_MAPPING']]
+
+    working_result_df:pd.DataFrame = pd.merge(left=working_result_df,right=suggested_map_df,on=['SUGGESTED_MAPPING'],how='inner')
+    del suggested_map_df
+    gc.collect()
+
+    working_result_df:pd.DataFrame = working_result_df[['PROD_DESC1','PROD_DESC2','REPLACEMENT_COUNT','TO_REPLACE','REPALCE_WITH']]
+    working_result_df:pd.DataFrame = working_result_df.sort_values(by=['REPLACEMENT_COUNT'],ascending=[False])
+
     # writing file with abbreviation expansion suggestion with examples
-    working_result_score_df.to_csv(path_or_buf=self.output_file_name+'_Examples.csv',index=False,encoding='latin-1',mode='w',header=True,)
+    working_result_df.to_csv(path_or_buf=self.output_file_name+'_Examples.csv',index=False,encoding='latin-1',mode='w',header=True,)
     print('\u2501'*43)
-    print('\u2503','{:^31}'.format(f'Abbreviation Expansion with Examples: {working_result_score_df.shape[0]}'),'\u2503')
+    print('\u2503','{:^31}'.format(f'Abbreviation Expansion with Examples: {working_result_df.shape[0]}'),'\u2503')
     print('\u2501'*43)
 
-    # single core processing
+    del working_result_df
+    gc.collect()
+
+    # # writing file with abbreviation expansion suggestion with examples
+    # working_result_df.to_csv(path_or_buf=self.output_file_name+'_Examples.csv',index=False,encoding='latin-1',mode='w',header=True,)
+    # print('\u2501'*43)
+    # print('\u2503','{:^31}'.format(f'Abbreviation Expansion with Examples: {working_result_df.shape[0]}'),'\u2503')
+    # print('\u2501'*43)
+
+    # # single core processing
+    # # keyword_mapping_df:pd.DataFrame = pd.DataFrame(data={
+    # #   'TO_REPLACE':working_result_df['SUGGESTED_MAPPING'].apply(lambda x: list(x.keys())).explode().reset_index(drop=True),
+    # #   'REPALCE_WITH':working_result_df['SUGGESTED_MAPPING'].apply(lambda x: list(x.values())).explode().reset_index(drop=True),
+    # #   }).dropna().drop_duplicates().reset_index(drop=True)
+
+    # # using pandarallel for multiprocessing
     # keyword_mapping_df:pd.DataFrame = pd.DataFrame(data={
-    #   'TO_REPLACE':working_result_score_df['SUGGESTED_MAPPING'].apply(lambda x: list(x.keys())).explode().reset_index(drop=True),
-    #   'REPALCE_WITH':working_result_score_df['SUGGESTED_MAPPING'].apply(lambda x: list(x.values())).explode().reset_index(drop=True),
+    #   'TO_REPLACE':working_result_df['SUGGESTED_MAPPING'].parallel_apply(lambda x: list(x.keys())).explode().reset_index(drop=True),
+    #   'REPALCE_WITH':working_result_df['SUGGESTED_MAPPING'].parallel_apply(lambda x: list(x.values())).explode().reset_index(drop=True),
     #   }).dropna().drop_duplicates().reset_index(drop=True)
 
-    # using pandarallel for multiprocessing
-    keyword_mapping_df:pd.DataFrame = pd.DataFrame(data={
-      'TO_REPLACE':working_result_score_df['SUGGESTED_MAPPING'].parallel_apply(lambda x: list(x.keys())).explode().reset_index(drop=True),
-      'REPALCE_WITH':working_result_score_df['SUGGESTED_MAPPING'].parallel_apply(lambda x: list(x.values())).explode().reset_index(drop=True),
-      }).dropna().drop_duplicates().reset_index(drop=True)
+    # keyword_mapping_df['TO_REPLACE_LENGTH']:pd.Series = keyword_mapping_df['TO_REPLACE'].str.len()
+    # keyword_mapping_df:pd.DataFrame = keyword_mapping_df.sort_values(by=['TO_REPLACE','TO_REPLACE_LENGTH',],ascending=[True,True,])
+    # keyword_mapping_df:pd.DataFrame = keyword_mapping_df[['TO_REPLACE','REPALCE_WITH']]
 
-    keyword_mapping_df['TO_REPLACE_LENGTH']:pd.Series = keyword_mapping_df['TO_REPLACE'].str.len()
-    keyword_mapping_df:pd.DataFrame = keyword_mapping_df.sort_values(by=['TO_REPLACE','TO_REPLACE_LENGTH',],ascending=[True,True,])
-    keyword_mapping_df:pd.DataFrame = keyword_mapping_df[['TO_REPLACE','REPALCE_WITH']]
+    # # single core processing
+    # # keyword_mapping_df['SIMILARITY_SCORE_1']:pd.Series = keyword_mapping_df[['TO_REPLACE','REPALCE_WITH']].apply(lambda x: self.get_fuzz_partial_ratio(sent_1=x[0],sent_2=x[1]),axis=1)
+    # # keyword_mapping_df['SIMILARITY_SCORE_2']:pd.Series = keyword_mapping_df[['TO_REPLACE','REPALCE_WITH']].apply(lambda x: self.get_jaro_winkler_similarity(sent_1=x[0],sent_2=x[1]),axis=1)
 
-    # single core processing
-    # keyword_mapping_df['SIMILARITY_SCORE_1']:pd.Series = keyword_mapping_df[['TO_REPLACE','REPALCE_WITH']].apply(lambda x: self.text_scoring.get_fuzz_partial_ratio(sent_1=x[0],sent_2=x[1]),axis=1)
-    # keyword_mapping_df['SIMILARITY_SCORE_2']:pd.Series = keyword_mapping_df[['TO_REPLACE','REPALCE_WITH']].apply(lambda x: self.text_scoring.get_jaro_winkler_similarity(sent_1=x[0],sent_2=x[1]),axis=1)
+    # # using pandarallel for multiprocessing
+    # keyword_mapping_df['SIMILARITY_SCORE_1']:pd.Series = keyword_mapping_df[['TO_REPLACE','REPALCE_WITH']].parallel_apply(lambda x: self.get_fuzz_partial_ratio(sent_1=x[0],sent_2=x[1]),axis=1)
+    # keyword_mapping_df['SIMILARITY_SCORE_2']:pd.Series = keyword_mapping_df[['TO_REPLACE','REPALCE_WITH']].parallel_apply(lambda x: self.get_jaro_winkler_similarity(sent_1=x[0],sent_2=x[1]),axis=1)
 
-    # using pandarallel for multiprocessing
-    keyword_mapping_df['SIMILARITY_SCORE_1']:pd.Series = keyword_mapping_df[['TO_REPLACE','REPALCE_WITH']].parallel_apply(lambda x: self.text_scoring.get_fuzz_partial_ratio(sent_1=x[0],sent_2=x[1]),axis=1)
-    keyword_mapping_df['SIMILARITY_SCORE_2']:pd.Series = keyword_mapping_df[['TO_REPLACE','REPALCE_WITH']].parallel_apply(lambda x: self.text_scoring.get_jaro_winkler_similarity(sent_1=x[0],sent_2=x[1]),axis=1)
+    # keyword_mapping_df['SIMILARITY_SCORE_1']:pd.Series = keyword_mapping_df['SIMILARITY_SCORE_1'].round(0)
+    # keyword_mapping_df['SIMILARITY_SCORE_2']:pd.Series = keyword_mapping_df['SIMILARITY_SCORE_2'].round(0)
+    # keyword_mapping_df['SIMILARITY_SCORE_1']:pd.Series = keyword_mapping_df['SIMILARITY_SCORE_1'].astype(int)
+    # keyword_mapping_df['SIMILARITY_SCORE_2']:pd.Series = keyword_mapping_df['SIMILARITY_SCORE_2'].astype(int)
 
+    # # writing file with abbreviation expansion suggestion without examples
+    # keyword_mapping_df.to_csv(path_or_buf=self.output_file_name+'_Mapping.csv',index=False,encoding='latin-1',mode='w',header=True,)
+    # print('\u2501'*42)
+    # print('\u2503','{:^31}'.format(f'Unique Abbreviation Expansion Found: {keyword_mapping_df.shape[0]}'),'\u2503')
+    # print('\u2501'*42)
 
-    keyword_mapping_df['SIMILARITY_SCORE_1']:pd.Series = keyword_mapping_df['SIMILARITY_SCORE_1'].round(0)
-    keyword_mapping_df['SIMILARITY_SCORE_2']:pd.Series = keyword_mapping_df['SIMILARITY_SCORE_2'].round(0)
-    keyword_mapping_df['SIMILARITY_SCORE_1']:pd.Series = keyword_mapping_df['SIMILARITY_SCORE_1'].astype(int)
-    keyword_mapping_df['SIMILARITY_SCORE_2']:pd.Series = keyword_mapping_df['SIMILARITY_SCORE_2'].astype(int)
-
-    # writing file with abbreviation expansion suggestion without examples
-    keyword_mapping_df.to_csv(path_or_buf=self.output_file_name+'_Mapping.csv',index=False,encoding='latin-1',mode='w',header=True,)
-    print('\u2501'*42)
-    print('\u2503','{:^31}'.format(f'Unique Abbreviation Expansion Found: {keyword_mapping_df.shape[0]}'),'\u2503')
-    print('\u2501'*42)
-
-    del working_result_score_df,keyword_mapping_df
-    gc.collect()
+    # del working_result_df,keyword_mapping_df
+    # gc.collect()
 
     print(f"Elapsed time: {((time.time() - start_time) / 60):.2f} minutes")
     return None
