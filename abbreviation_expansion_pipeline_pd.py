@@ -49,7 +49,7 @@ class AbbreviationExpansionPipelinePD():
   """
   def __init__(self,dataframe_object:pd.DataFrame,product_desc_column:str,ngram:int=2,output_file_name:str='Mined_Keyword_Mapping',cosine_threshold:float=0.73,min_text_match_threshold:float=85.0,):
     """
-    Initialize the AbbreviationExpansionPipeline class.
+    Initialize the AbbreviationExpansionPipelinePD class.
 
     Args:
     - dataframe (pd.DataFrame): Input pandas DataFrame object containing data.
@@ -70,7 +70,7 @@ class AbbreviationExpansionPipelinePD():
     """
     Returns a string representation of the class instance.
     """
-    return f"AbbreviationExpansionPipeline()"
+    return f"AbbreviationExpansionPipelinePD()"
 
   def __str__(self):
     """
