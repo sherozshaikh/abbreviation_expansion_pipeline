@@ -55,6 +55,7 @@ class AbbreviationExpansionPipelinePD():
     self.working_df:pd.DataFrame = dataframe_object
     self.product_desc_column:str = product_desc_column
     self.ngram_pair:int = ngram
+    self.filter_min_count = self.ngram_pair - 1
     self.output_file_name:str = output_file_name
     self.cosine_threshold = cosine_threshold
     self.min_text_match_threshold = min_text_match_threshold
@@ -306,14 +307,17 @@ class AbbreviationExpansionPipelinePD():
     del ngrams_df_status
     gc.collect()
 
-    print('\u2501'*35)
-    print('\u2503','{:^31}'.format(f'Mapped Content Found: {working_result_df.shape[0]}'),'\u2503')
-    print('\u2501'*35)
-
     working_result_df:pd.DataFrame = working_result_df.rename(columns={'Context_1':'doc1_elements','Context_2':'doc2_elements',})
     working_result_df:pd.DataFrame = working_result_df[working_result_df['doc1_elements'] != working_result_df['doc2_elements']]
     working_result_df[['doc1_elements','doc2_elements']] = pd.DataFrame(np.sort(working_result_df[['doc1_elements','doc2_elements']],axis=1),index=working_result_df.index)
     working_result_df:pd.DataFrame = working_result_df.drop_duplicates()
+
+    # get Common Elements between the two documents ======
+    working_result_df['CommonElementsCount']:pd.Series = working_result_df[['doc1_elements','doc2_elements']].parallel_apply(lambda x: len(set(str(x[0]).split(' ')).intersection(set(str(x[1]).split(' ')))),axis=1)
+    working_result_df:pd.DataFrame = working_result_df[working_result_df['CommonElementsCount']>self.filter_min_count]
+    print('\u2501'*35)
+    print('\u2503','{:^31}'.format(f'Mapped Content Found: {working_result_df.shape[0]}'),'\u2503')
+    print('\u2501'*35)
 
     # Processing - Similarity Match ======
     working_result_df['high_score_difflib_sequencematcher']:pd.Series = working_result_df[['doc1_elements','doc2_elements']].parallel_apply(lambda x: self.get_difflib_sequencematcher(sent_1=x[0],sent_2=x[1]),axis=1)
