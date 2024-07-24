@@ -5,7 +5,7 @@
 # import subprocess
 # import importlib
 
-# req_packages:list = ['collections','concurrent','gc','nltk','numpy','os','pandarallel','pandas','re','shutil','string','time','transformers','typing','warnings',]
+# req_packages:list = ['ast','collections','concurrent','gc','nltk','numpy','os','pandarallel','pandas','re','shutil','string','time','transformers','typing','warnings',]
 
 # for package_name in req_packages:
 #   try:
@@ -39,6 +39,7 @@ warnings.filterwarnings("ignore")
 from collections import Counter
 import concurrent.futures
 import re
+import ast
 import string
 import pandas as pd
 import numpy as np
