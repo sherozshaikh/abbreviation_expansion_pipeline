@@ -94,6 +94,7 @@ class AbbreviationExpansionPipeline():
     self.working_df:pd.DataFrame = dataframe_object
     self.product_desc_column:str = product_desc_column
     self.ngram_pair:int = ngram
+    self.filter_min_count = self.ngram_pair - 1
     self.output_file_name:str = output_file_name
     self.hf_model_name:str = hugging_face_model_name
     self.hf_tokenizer = AutoTokenizer.from_pretrained(self.hf_model_name)
@@ -356,7 +357,7 @@ class AbbreviationExpansionPipeline():
 
     # get Common Elements between the two documents ======
     working_result_df['CommonElementsCount']:pd.Series = working_result_df[['doc1_elements','doc2_elements']].parallel_apply(lambda x: len(set(str(x[0]).split(' ')).intersection(set(str(x[1]).split(' ')))),axis=1)
-    working_result_df:pd.DataFrame = working_result_df[working_result_df['CommonElementsCount']>0]
+    working_result_df:pd.DataFrame = working_result_df[working_result_df['CommonElementsCount']>self.filter_min_count]
     print('\u2501'*35)
     print('\u2503','{:^31}'.format(f'Potential Matches Found: {working_result_df.shape[0]}'),'\u2503')
     print('\u2501'*35)
