@@ -257,7 +257,8 @@ class AbbreviationExpansionPipelinePD():
       for i2 in item_2_list:
         sc1:float = self.get_fuzz_partial_ratio(sent_1=i1,sent_2=i2)
         sc2:float = self.get_jaro_winkler_similarity(sent_1=i1,sent_2=i2)
-        current_score:float = min(sc1,sc2)
+        current_score:float = sc1 if sc1 >= sc2 else sc2
+        # current_score:float = min(sc1,sc2)
         if best_score >= current_score:
           continue
         else:
